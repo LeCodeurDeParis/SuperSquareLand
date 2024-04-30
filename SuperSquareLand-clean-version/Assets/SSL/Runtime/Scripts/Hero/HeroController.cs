@@ -20,15 +20,27 @@ public class HeroController : MonoBehaviour
         GUILayout.EndVertical();
     }
 
+    private bool _GetInputJump()
+        {
+            return Input.GetKey(KeyCode.Space);
+        }
     private void Update()
     {
         _entity.SetMoveDirX(GetInputMoveX());
+
+       
 
         if (_GetInputDownJump())
         {
             if (_entity.IsTouchingGround && !_entity.IsJumping)
             {
                 _entity.JumpStart();
+            }
+        }
+
+        if(_entity.IsJumpImpulsing){
+            if(!_GetInputJump() && _entity.isJumpMinDurationReached){
+                _entity.StopJumpImpulsion();
             }
         }
     }
@@ -44,7 +56,7 @@ public class HeroController : MonoBehaviour
             inputMoveX = 1f;
         }
 
-        if (Input.GetKey(KeyCode.E)){
+        if (Input.GetKeyDown(KeyCode.E)){
             inputMoveX =_entity._Dash();
         }
 
