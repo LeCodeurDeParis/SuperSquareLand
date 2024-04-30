@@ -5,6 +5,9 @@ public class HeroController : MonoBehaviour
     [Header("Entity")]
     [SerializeField] private HeroEntity _entity;
 
+    [Header("Dash Settings")]
+    [SerializeField] private HeroDashSettings _dashSettings;
+
     [Header("Debug")]
     [SerializeField] private bool _guiDebug = false;
 
@@ -31,6 +34,10 @@ public class HeroController : MonoBehaviour
         
         if(Input.GetKey(KeyCode.D)){
             inputMoveX = 1f;
+        }
+
+        if (Input.GetKey(KeyCode.E)){
+            inputMoveX =_entity._Dash();
         }
 
         return inputMoveX;

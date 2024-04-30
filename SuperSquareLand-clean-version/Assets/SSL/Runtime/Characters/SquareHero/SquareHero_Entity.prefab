@@ -847,6 +847,12 @@ MonoBehaviour:
   _rigidbody: {fileID: 7212136366118121974}
   _movementsSettings:
     acceleration: 20
+    deceleration: 15
+    turnBackFrictions: 25
     speedMax: 15
+  _dashSettings:
+    Speed: 40
+    Duration: 1
   _orientVisualRoot: {fileID: 3024582456938629764}
   _guiDebug: 0
+  isDashing: 0
