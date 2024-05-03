@@ -21,6 +21,9 @@ public class CameraManager : MonoBehaviour
     //Follow
     private Vector3 _profileLastFollowDestination;
 
+    //Damping
+    private Vector3 _dampedPosition;
+
     private void Awake()
     {
         Instance = this;
@@ -39,11 +42,18 @@ public class CameraManager : MonoBehaviour
         _camera.orthographicSize = size;
     }
 
+    private void _SetCameraDampedPosition(Vector3 position)
+    {
+        _dampedPosition.x = position.x;
+        _dampedPosition.y = position.y;
+    }
+
     private void _InitToDefaultProfile()
     {
         _currentCameraProfile = _defaultCameraProfile;
         _SetCameraPosition(_currentCameraProfile.CameraPosition);
         _SetCameraSize(_currentCameraProfile.CameraSize);
+        _SetCameraDampedPosition(_FindCameranextPosition());
     }
 
     private void Start()
@@ -54,6 +64,7 @@ public class CameraManager : MonoBehaviour
     private void Update()
     {
         Vector3 nextPosition = _FindCameranextPosition();
+        nextPosition = _ApplyDamping(nextPosition);
         if(_IsPlayingProfileTransition())
         {
             _profileTransitionTimer += Time.deltaTime;
@@ -74,6 +85,7 @@ public class CameraManager : MonoBehaviour
         {
             _PlayProfileTransition(transition);
         }
+        _SetCameraDampedPosition(_FindCameranextPosition());
     }
 
     public void ExitProfile(CameraProfile cameraProfile, CameraProfileTransition transition = null)
@@ -84,6 +96,8 @@ public class CameraManager : MonoBehaviour
         {
             _PlayProfileTransition(transition);
         }
+        _SetCameraDampedPosition(_FindCameranextPosition());
+
     }
 
     private void _PlayProfileTransition(CameraProfileTransition transition)
@@ -130,5 +144,30 @@ public class CameraManager : MonoBehaviour
             }
         }
         return _currentCameraProfile.CameraPosition;
+    }
+
+    private Vector3 _ApplyDamping(Vector3 position)
+    {
+        if (_currentCameraProfile.UseDampingHorizontally) {
+            _dampedPosition.x = Mathf.Lerp(
+                _dampedPosition.x,
+                position.x,
+                _currentCameraProfile.HorizontalDampingFactor * Time.deltaTime
+            );
+        } else {
+            _dampedPosition.x = position.x;
+        }
+
+        if (_currentCameraProfile.UseDampingVertically) {
+            _dampedPosition.y = Mathf.Lerp(
+                _dampedPosition.y,
+                position.y,
+                _currentCameraProfile.VerticalDampingFactor * Time.deltaTime
+            );
+        } else {
+            _dampedPosition.y = position.y;
+        }
+
+        return _dampedPosition;
     }
 }
