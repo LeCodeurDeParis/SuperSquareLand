@@ -34,6 +34,8 @@ public class HeroEntity : MonoBehaviour
     [SerializeField] private HeroJumpSettings _jumpSettings;
     [SerializeField] private HeroFallSettings _jumpFallSettings;
 
+    [SerializeField] private HeroHorizontalMovementsSettings _jumpHorizontalMovementsSettings;
+
     [Header("Debug")]
     [SerializeField] private bool _guiDebug = false;
 
@@ -160,15 +162,16 @@ public class HeroEntity : MonoBehaviour
         return _moveDirX * _orientX < 0f;
     }
 
-    public float _Dash(){
-        if (timer < _dashSettings.Duration && !isDashing){
-            timer += Time.fixedDeltaTime;
-            isDashing = true;
-            return _horizontalSpeed += _dashSettings.Speed * Time.fixedDeltaTime;
-        } else {
-            timer = 0f;
-            isDashing = false;
-            return 0f;
+    public void _Dash(){
+        if(!isDashing){
+            if (timer < _dashSettings.Duration){
+                isDashing = true;
+                _horizontalSpeed = _dashSettings.Speed;
+                timer += Time.fixedDeltaTime;
+            } else {
+                isDashing = false;
+                timer = 0f;
+            }
         }
     }
 

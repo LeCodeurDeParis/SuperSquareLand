@@ -40,6 +40,11 @@ public class HeroController : MonoBehaviour
         {
             return Input.GetKey(KeyCode.Space);
         }
+
+    private bool _GetInputDash()
+    {
+        return Input.GetKeyDown(KeyCode.E);
+    }
     private void Update()
     {
         _UpdateJumpBuffer();
@@ -61,6 +66,11 @@ public class HeroController : MonoBehaviour
             } else {
                 _ResetJumpBuffer();
             }
+        }
+
+        if (_GetInputDash())
+        {
+            _entity._Dash();
         }
 
         if (IsJumpBufferActive())
@@ -88,10 +98,6 @@ public class HeroController : MonoBehaviour
         
         if(Input.GetKey(KeyCode.D)){
             inputMoveX = 1f;
-        }
-
-        if (Input.GetKeyDown(KeyCode.E)){
-            inputMoveX =_entity._Dash();
         }
 
         return inputMoveX;
