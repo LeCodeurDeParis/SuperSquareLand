@@ -60,7 +60,7 @@ public class HeroController : MonoBehaviour
 
         if (_GetInputDownJump())
         {
-            if ((_entity.IsTouchingGround || _IsCoyoteTimeActive()) && !_entity.IsJumping)
+            if ((_entity.canJump || _IsCoyoteTimeActive()) && !_entity.IsJumping)
             {
                 _entity.JumpStart();
             } else {
@@ -70,12 +70,12 @@ public class HeroController : MonoBehaviour
 
         if (_GetInputDash())
         {
-            _entity._Dash();
+            _entity._DashOn();
         }
 
         if (IsJumpBufferActive())
         {
-            if ((_entity.IsTouchingGround || _IsCoyoteTimeActive()) && !_entity.IsJumping)
+            if ((_entity.canJump || _IsCoyoteTimeActive()) && !_entity.IsJumping)
             {
                 _entity.JumpStart();
             }

@@ -15,6 +15,7 @@ public class HeroEntity : MonoBehaviour
 
     [Header("Dash")]
     [SerializeField] private HeroDashSettings _dashSettings;
+    private float _previousHorizontalSpeed = 0f;
 
     [Header("Orientation")]
     [SerializeField] private Transform _orientVisualRoot;
@@ -30,11 +31,19 @@ public class HeroEntity : MonoBehaviour
     [SerializeField] private GroundDetector _groundDetector;
     public bool IsTouchingGround {get; private set;}
 
-    [Header("Jump")]
-    [SerializeField] private HeroJumpSettings _jumpSettings;
-    [SerializeField] private HeroFallSettings _jumpFallSettings;
+    [Header("Walls")]
+    [SerializeField] private WallsDetector _wallsDetector;
+    public bool IsTouchingWallRight {get; private set;}
+    public bool IsTouchingWallLeft {get; private set;}
 
-    [SerializeField] private HeroHorizontalMovementsSettings _jumpHorizontalMovementsSettings;
+    [Header("Jump")]
+    [SerializeField] private HeroJumpSettings[] _jumpSettings;
+    private int _indexJump = 0;
+
+    public bool nbrJump => _indexJump < _jumpSettings.Length;
+    public bool canJump => (nbrJump && _jumpState != JumpState.JumpImpulsion);
+    [SerializeField] private HeroFallSettings _jumpFallSettings;
+    [SerializeField] private HeroJumpHorizontalMovementsSettings _jumpHorizontalMovementsSettings;
 
     [Header("Debug")]
     [SerializeField] private bool _guiDebug = false;
@@ -42,7 +51,6 @@ public class HeroEntity : MonoBehaviour
     //Camera Follow
     private CameraFollowable _cameraFollowable;
 
-    private float timer = 0f;
     public bool isDashing = false;
 
     enum JumpState {
@@ -70,13 +78,17 @@ public class HeroEntity : MonoBehaviour
     private void FixedUpdate()
     {
         _ApplyGroundDetection();
+        _ApplyWallRightDetection();
+        _ApplyWallLeftDetection();
         _UpdateCameraFollowPosition();
 
         HeroHorizontalMovementsSettings horizontalMovementsSettings = _GetCurrentHorizontalMovementsSettings();
         if (_AreOrientAndMovementOpposite()){
             _TurnBack(horizontalMovementsSettings);
         } else {
-            _UpdateHorizontalSpeed(horizontalMovementsSettings);
+            if (!_dashSettings.isDashing){
+                _UpdateHorizontalSpeed(horizontalMovementsSettings);
+            }
             _ChangeOrientFromHorizontalMovement();
         }
 
@@ -91,8 +103,20 @@ public class HeroEntity : MonoBehaviour
             }
         }
 
+
+        HeroJumpHorizontalMovementsSettings jumpHorizontalMovementsSettings = _GetCurrentJumpHorizontalMovementsSettings();
+        if (!IsTouchingGround){
+            if (_jumpState == JumpState.NotJumping){
+                _UpdateJumpHorizontalSpeed(jumpHorizontalMovementsSettings);
+                _ApplyFallGravity(_fallSettings);
+            }
+            else{
+                _ApplyFallGravity(_fallSettings);
+            }
+        }
         _ApplyHorizontalSpeed();
         _ApplyVerticalSpeed();
+        _Dash();
     }
 
     private void _ApplyHorizontalSpeed()
@@ -130,6 +154,26 @@ public class HeroEntity : MonoBehaviour
         GUILayout.Label($"JumpState = {_jumpState}");
         GUILayout.Label($"Horizontal Speed = {_horizontalSpeed}");
         GUILayout.Label($"Vertical Speed = {_verticalSpeed}");
+        GUILayout.Label($"IsDashing  = {_dashSettings.isDashing}");
+        if (IsTouchingWallRight){
+            GUILayout.Label("TouchingWallRight");
+        }
+        else{
+            GUILayout.Label("NotTouchingWallRight");
+        }
+        if (IsTouchingWallLeft){
+            GUILayout.Label("Touching Wall Left");
+        }
+        else{
+            GUILayout.Label("NotTouchingWallLeft");
+        }
+        if(canJump){
+            GUILayout.Label("Peut Sauter");
+        }
+        else{
+            GUILayout.Label("Ne peut pas sauter");
+        }
+        
 
         GUILayout.EndVertical();
     }
@@ -153,7 +197,29 @@ public class HeroEntity : MonoBehaviour
         }
     }
 
+    private void _Accelerate(HeroJumpHorizontalMovementsSettings settings){
+        _horizontalSpeed += settings.acceleration * Time.fixedDeltaTime;
+        if (_horizontalSpeed > settings.speedMax){
+            _horizontalSpeed = settings.speedMax;
+        }
+    }
+
+    public void _Decelerate(HeroJumpHorizontalMovementsSettings settings){
+        _horizontalSpeed -= settings.deceleration * Time.fixedDeltaTime;
+        if (_horizontalSpeed < 0f) {
+            _horizontalSpeed = 0f;
+        }
+    }
+
     private void _UpdateHorizontalSpeed(HeroHorizontalMovementsSettings settings){
+        if (_moveDirX != 0f){
+            _Accelerate(settings);
+        } else {
+            _Decelerate(settings);
+        }
+    }
+
+    private void _UpdateJumpHorizontalSpeed(HeroJumpHorizontalMovementsSettings settings){
         if (_moveDirX != 0f){
             _Accelerate(settings);
         } else {
@@ -173,15 +239,38 @@ public class HeroEntity : MonoBehaviour
         return _moveDirX * _orientX < 0f;
     }
 
-    public void _Dash(){
-        if(!isDashing){
-            if (timer < _dashSettings.Duration){
-                isDashing = true;
+    public void _DashOn()
+    {
+        if (_dashSettings.timer < _dashSettings.Duration){
+            if(!IsTouchingGround){
+                _previousHorizontalSpeed = _horizontalSpeed;
                 _horizontalSpeed = _dashSettings.Speed;
-                timer += Time.fixedDeltaTime;
+                _dashSettings.isDashing = true;
+            }
+            else{
+                _previousHorizontalSpeed = _horizontalSpeed;
+                _horizontalSpeed = _dashSettings.Speed;
+                _dashSettings.isDashing = true;
+            }
+        }
+    }
+
+    public void _Dash()
+    {
+        if (_dashSettings.isDashing)
+        {
+            if (_dashSettings.timer <= _dashSettings.Duration)
+            {
+                _dashSettings.timer += Time.deltaTime;
             } else {
-                isDashing = false;
-                timer = 0f;
+                _dashSettings.isDashing = false;
+                if (_previousHorizontalSpeed > 0){
+                    _horizontalSpeed =  _previousHorizontalSpeed;
+                }
+                else{
+                    _horizontalSpeed = 0;   
+                }
+                _dashSettings.timer = 0f;
             }
         }
     }
@@ -201,6 +290,7 @@ public class HeroEntity : MonoBehaviour
 
     private void _ApplyGroundDetection(){
         IsTouchingGround = _groundDetector.DetectGroundNearBy();
+        _indexJump = 0;
     }
     
     private void _ResetVerticalSpeed(){
@@ -210,14 +300,19 @@ public class HeroEntity : MonoBehaviour
     public void JumpStart(){
         _jumpState = JumpState.JumpImpulsion;
         _jumpTimer = 0f;
+        if (_indexJump < _jumpSettings.Length -1){
+            _indexJump +=1;
+            Debug.Log(_indexJump);
+        }
     }
 
     public bool IsJumping => _jumpState != JumpState.NotJumping;
 
-    private void _UpdateJumpStateImpulsion(){
+    private void _UpdateJumpStateImpulsion(int index){
         _jumpTimer += Time.fixedDeltaTime;
-        if (_jumpTimer < _jumpSettings.jumpMaxDuration){
-            _verticalSpeed = _jumpSettings.jumpSpeed;
+        if (_jumpTimer < _jumpSettings[index].jumpMaxDuration){
+            _verticalSpeed = _jumpSettings[index].jumpSpeed;
+
         } else {
             _jumpState = JumpState.Falling;
         }
@@ -235,7 +330,7 @@ public class HeroEntity : MonoBehaviour
     private void _UpdateJump(){
         switch (_jumpState){
             case JumpState.JumpImpulsion:
-                _UpdateJumpStateImpulsion();
+                _UpdateJumpStateImpulsion(_indexJump);
                 break;
             case JumpState.Falling:
                 _UpdateJumpStateFalling();
@@ -248,7 +343,7 @@ public class HeroEntity : MonoBehaviour
     }
 
     public bool IsJumpImpulsing => _jumpState == JumpState.JumpImpulsion;
-    public bool isJumpMinDurationReached => _jumpTimer >= _jumpSettings.jumpMinDuration;
+    public bool isJumpMinDurationReached => _jumpTimer >= _jumpSettings[_indexJump].jumpMinDuration;
 
     private HeroHorizontalMovementsSettings _GetCurrentHorizontalMovementsSettings(){
         if (IsTouchingGround){
@@ -258,12 +353,30 @@ public class HeroEntity : MonoBehaviour
         }
     }
 
+    private HeroJumpHorizontalMovementsSettings _GetCurrentJumpHorizontalMovementsSettings(){
+        return _jumpHorizontalMovementsSettings;
+    }
+
     private void _UpdateCameraFollowPosition()
     {
         _cameraFollowable.FollowPositionX = _rigidbody.position.x;
         if (IsTouchingGround && !IsJumping)
         {
             _cameraFollowable.FollowPositionY = _rigidbody.position.y;
+        }
+    }
+
+    private void _ApplyWallRightDetection(){
+        IsTouchingWallRight = _wallsDetector.DetectWallRightNearBy();
+    }
+
+    private void _ApplyWallLeftDetection(){
+        IsTouchingWallLeft = _wallsDetector.DetectWallLeftNearBy();
+    }
+
+    private void NoDashOnWall(){
+        if (IsTouchingWallLeft || IsTouchingWallRight){
+            _dashSettings.isDashing = false;
         }
     }
 }
